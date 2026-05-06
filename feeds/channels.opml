@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Smart Daily - 多板块信息源</title>
+  </head>
+  <body>
+    <!-- 政治/时政 -->
+    <outline text="政治">
+      <outline text="澎湃新闻" title="澎湃新闻" type="rss"
+        xmlUrl="https://www.thepaper.cn/rss.xml" htmlUrl="https://www.thepaper.cn/"/>
+      <outline text="新华社" title="新华社" type="rss"
+        xmlUrl="https://rsshub.app/xinhuanet/whxw" htmlUrl="https://www.xinhuanet.com/"/>
+    </outline>
+
+    <!-- 财经 -->
+    <outline text="财经">
+      <outline text="财新网" title="财新网" type="rss"
+        xmlUrl="https://rsshub.app/caixin/finance" htmlUrl="https://www.caixin.com/"/>
+      <outline text="第一财经" title="第一财经" type="rss"
+        xmlUrl="https://rsshub.app/yicai/brief" htmlUrl="https://www.yicai.com/"/>
+      <outline text="华尔街日报中文版" title="华尔街日报中文版" type="rss"
+        xmlUrl="https://rsshub.app/wsj/zh" htmlUrl="https://cn.wsj.com/"/>
+    </outline>
+
+    <!-- 民生/社会 -->
+    <outline text="民生">
+      <outline text="网易新闻" title="网易新闻" type="rss"
+        xmlUrl="https://rsshub.app/netease/news/rank" htmlUrl="https://news.163.com/"/>
+      <outline text="今日头条热点" title="今日头条热点" type="rss"
+        xmlUrl="https://rsshub.app/jinritoutiao/hot" htmlUrl="https://www.toutiao.com/"/>
+    </outline>
+
+    <!-- 科技（通用） -->
+    <outline text="科技">
+      <outline text="爱范儿" title="爱范儿" type="rss"
+        xmlUrl="https://www.ifanr.com/feed" htmlUrl="https://www.ifanr.com/"/>
+      <outline text="少数派" title="少数派" type="rss"
+        xmlUrl="https://sspai.com/feed" htmlUrl="https://sspai.com/"/>
+      <outline text="IT之家" title="IT之家" type="rss"
+        xmlUrl="https://www.ithome.com/rss/" htmlUrl="https://www.ithome.com/"/>
+      <outline text="36氪" title="36氪" type="rss"
+        xmlUrl="https://36kr.com/feed" htmlUrl="https://36kr.com/"/>
+    </outline>
+  </body>
+</opml>

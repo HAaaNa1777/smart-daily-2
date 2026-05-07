@@ -224,17 +224,13 @@ def main() -> int:
         }
         items_with_id.append(item_with_id)
 
-    # 添加双语标题（AI 板块翻译，其他板块暂不翻译以节省时间）
-    ai_items = [item for item in items_with_id if is_ai_related_record(item)]
-    other_items = [item for item in items_with_id if not is_ai_related_record(item)]
-
-    ai_items_translated, _, title_cache = add_bilingual_fields(
-        ai_items, ai_items, session, title_cache, max_new_translations=100
+    # 添加双语标题（所有英文新闻都翻译）
+    all_items_translated, _, title_cache = add_bilingual_fields(
+        items_with_id, items_with_id, session, title_cache, max_new_translations=200
     )
 
-    # 合并并使用中文标题
-    all_items = ai_items_translated + other_items
-    for item in all_items:
+    # 使用中文标题
+    for item in all_items_translated:
         # 优先使用中文标题
         zh_title = item.get("title_zh")
         if zh_title:
@@ -250,7 +246,7 @@ def main() -> int:
     )
 
     # 生成报告
-    sections = generate_report(all_items, args.type)
+    sections = generate_report(all_items_translated, args.type)
 
     # 打印统计
     print("\n=== 板块统计 ===")

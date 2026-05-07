@@ -11,11 +11,14 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.update_news import (
+    add_bilingual_fields,
     collect_all,
     create_session,
     fetch_opml_rss,
+    has_cjk,
     is_ai_related_record,
     load_archive,
+    load_title_zh_cache,
     parse_iso,
     sanitize_public_payload,
     utc_now,
@@ -202,8 +205,52 @@ def main() -> int:
 
     print(f"去重后: {len(unique_items)} 条")
 
+    # 添加中文翻译
+    title_cache_path = output_dir / "title-zh-cache.json"
+    title_cache = load_title_zh_cache(title_cache_path)
+
+    # 转换为带 id 的字典格式（add_bilingual_fields 需要的格式）
+    items_with_id = []
+    for i, item in enumerate(unique_items):
+        item_with_id = {
+            "id": f"item_{i}",
+            "title": item.get("title", ""),
+            "title_original": item.get("title", ""),
+            "url": item.get("url", ""),
+            "source": item.get("source", ""),
+            "published_at": item.get("published_at"),
+            "site_id": item.get("site_id", ""),
+            "site_name": item.get("site_name", ""),
+        }
+        items_with_id.append(item_with_id)
+
+    # 添加双语标题（AI 板块翻译，其他板块暂不翻译以节省时间）
+    ai_items = [item for item in items_with_id if is_ai_related_record(item)]
+    other_items = [item for item in items_with_id if not is_ai_related_record(item)]
+
+    ai_items_translated, _, title_cache = add_bilingual_fields(
+        ai_items, ai_items, session, title_cache, max_new_translations=100
+    )
+
+    # 合并并使用中文标题
+    all_items = ai_items_translated + other_items
+    for item in all_items:
+        # 优先使用中文标题
+        zh_title = item.get("title_zh")
+        if zh_title:
+            item["title"] = zh_title
+        elif item.get("title_bilingual"):
+            item["title"] = item["title_bilingual"]
+
+    # 保存翻译缓存
+    title_cache_path.parent.mkdir(parents=True, exist_ok=True)
+    title_cache_path.write_text(
+        json.dumps(title_cache, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
     # 生成报告
-    sections = generate_report(unique_items, args.type)
+    sections = generate_report(all_items, args.type)
 
     # 打印统计
     print("\n=== 板块统计 ===")

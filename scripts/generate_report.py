@@ -76,7 +76,7 @@ def generate_report(
     items: list[dict[str, Any]],
     report_type: str = "daily",
 ) -> dict[str, list[dict[str, Any]]]:
-    """生成报告，按板块分类
+    """生成报告，按板块分类并去重
 
     Args:
         items: 新闻条目列表
@@ -86,8 +86,15 @@ def generate_report(
         按板块分类的新闻字典
     """
     sections: dict[str, list[dict[str, Any]]] = {}
+    seen_urls: set[str] = set()  # 全局去重
 
     for item in items:
+        # 按 URL 去重，确保每篇新闻只出现一次
+        url = item.get("url", "")
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
         section = classify_item(item)
         if section not in sections:
             sections[section] = []

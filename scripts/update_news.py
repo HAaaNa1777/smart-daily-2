@@ -102,12 +102,6 @@ OFFICIAL_AI_FEEDS: tuple[dict[str, str], ...] = (
         "xml_url": "https://github.blog/changelog/feed/",
         "html_url": "https://github.blog/changelog/",
     },
-    {
-        "title": "OpenAI Skills",
-        "xml_url": "https://github.com/openai/skills/commits/main.atom",
-        "html_url": "https://github.com/openai/skills",
-        "include_keywords": "hatch,pet,migrate-to-codex",
-    },
 )
 OFFICIAL_AI_MAX_AGE_DAYS = 45
 AIBREAKFAST_JINA_URL = "https://r.jina.ai/https://aibreakfast.beehiiv.com/"

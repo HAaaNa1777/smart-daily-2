@@ -84,6 +84,38 @@ def dedupe_key(item: dict[str, Any]) -> str:
     return f"fallback:{title}|{source}|{published_at}"
 
 
+def is_non_news_item(item: dict[str, Any]) -> bool:
+    """过滤仓库热榜、skills 教程等非新闻内容"""
+    title = str(item.get("title_original") or item.get("title") or "").strip().lower()
+    source = str(item.get("source") or "").strip().lower()
+    site_name = str(item.get("site_name") or "").strip().lower()
+    url = str(item.get("url") or "").strip().lower()
+    text = " ".join(f"{title} {source} {site_name} {url}".split())
+
+    if "github.com/openai/skills" in url or "/agent-skills" in url or "/skills" in url:
+        return True
+
+    if source == "github" and "github.com/" in url:
+        return True
+
+    community_sources = ("v2ex", "juejin", "follow builders", " x ")
+    if ("skill" in text or "技能" in text) and any(s in f" {source} " for s in community_sources):
+        return True
+
+    skill_noise = [
+        "agent-skills",
+        "agent skills",
+        "openai skills",
+        "codex skills",
+        "claude skill",
+        "skill 推荐",
+        "skills 深度解读",
+        "官方发布 android 6 大核心 skills",
+        "你给予法典的技能越多",
+    ]
+    return any(keyword in text for keyword in skill_noise)
+
+
 def generate_report(
     items: list[dict[str, Any]],
     report_type: str = "daily",
@@ -101,6 +133,9 @@ def generate_report(
     seen_keys: set[str] = set()  # 全局去重
 
     for item in items:
+        if is_non_news_item(item):
+            continue
+
         # 按 URL 去重；URL 缺失时用标题、来源和发布时间兜底
         key = dedupe_key(item)
         if key in seen_keys:

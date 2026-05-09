@@ -3,7 +3,9 @@ name: Daily Report
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "0 2 * * *"   # 北京时间 10:00
+    - cron: "0 6 * * *"   # 北京时间 14:00（备用）
+    - cron: "0 8 * * *"   # 北京时间 16:00（备用）
 
 concurrency:
   group: daily-report
@@ -20,7 +22,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Check if today's report already exists
+        id: check
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          if [ -f data/report-daily.json ]; then
+            GENERATED=$(python3 -c "import json; print(json.load(open('data/report-daily.json'))['generated_at'][:10])" 2>/dev/null || echo "")
+            if [ "$GENERATED" = "$TODAY" ]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "今天的日报已生成（$GENERATED），跳过"
+            else
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+              echo "今天的日报尚未生成，继续执行"
+            fi
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Python
+        if: steps.check.outputs.skip != 'true'
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
@@ -28,11 +48,31 @@ jobs:
           cache-dependency-path: "requirements.txt"
 
       - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Generate daily report
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          python scripts/generate_report.py --type daily --rss-opml feeds/channels.opml
+
+      - name: Commit report
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/report-daily.json data/title-zh-cache.json 2>/dev/null || true
+          if git diff --cached --quiet 2>/dev/null; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: update daily report"
+          git push
+
+      - name: Send daily email
+        if: steps.check.outputs.skip != 'true'
         env:
           EMAIL_SMTP: smtp.163.com
           EMAIL_PORT: 465
@@ -40,16 +80,4 @@ jobs:
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: |
-          python scripts/generate_report.py --type daily --rss-opml feeds/channels.opml --send-email
-
-      - name: Commit report
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/report-daily.json 2>/dev/null || true
-          if git diff --cached --quiet 2>/dev/null; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          git commit -m "chore: update daily report"
-          git push
+          python scripts/generate_report.py --type daily --output-dir data --send-email-only

@@ -72,6 +72,18 @@ def classify_item(item: dict[str, Any]) -> str:
     return "其他"
 
 
+def dedupe_key(item: dict[str, Any]) -> str:
+    """生成新闻去重键，URL 缺失时退化为标题和来源"""
+    url = str(item.get("url") or "").strip()
+    if url:
+        return f"url:{url}"
+
+    title = str(item.get("title_original") or item.get("title") or "").strip().lower()
+    source = str(item.get("source") or item.get("site_name") or "").strip().lower()
+    published_at = str(item.get("published_at") or "").strip()
+    return f"fallback:{title}|{source}|{published_at}"
+
+
 def generate_report(
     items: list[dict[str, Any]],
     report_type: str = "daily",
@@ -86,14 +98,14 @@ def generate_report(
         按板块分类的新闻字典
     """
     sections: dict[str, list[dict[str, Any]]] = {}
-    seen_urls: set[str] = set()  # 全局去重
+    seen_keys: set[str] = set()  # 全局去重
 
     for item in items:
-        # 按 URL 去重，确保每篇新闻只出现一次
-        url = item.get("url", "")
-        if url in seen_urls:
+        # 按 URL 去重；URL 缺失时用标题、来源和发布时间兜底
+        key = dedupe_key(item)
+        if key in seen_keys:
             continue
-        seen_urls.add(url)
+        seen_keys.add(key)
 
         section = classify_item(item)
         if section not in sections:
@@ -151,11 +163,42 @@ def main() -> int:
         help="发送邮件",
     )
     parser.add_argument(
+        "--send-email-only",
+        action="store_true",
+        help="从已生成的报告发送邮件，不重新抓取新闻",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="只生成报告，不发送邮件",
     )
     args = parser.parse_args()
+    output_dir = Path(args.output_dir)
+
+    if args.send_email_only:
+        report_path = output_dir / f"report-{args.type}.json"
+        if not report_path.exists():
+            print(f"报告不存在，无法发送邮件: {report_path}")
+            return 1
+
+        report_data = json.loads(report_path.read_text(encoding="utf-8"))
+        sections = report_data.get("sections") or {}
+        if not isinstance(sections, dict):
+            print(f"报告格式无效，缺少 sections: {report_path}")
+            return 1
+
+        if args.dry_run:
+            print(f"邮件 dry-run: 将从 {report_path} 发送 {args.type} 报告")
+            return 0
+
+        print(f"从已生成报告发送邮件: {report_path}")
+        success = send_daily_report(sections)
+        if success:
+            print("邮件发送成功")
+            return 0
+
+        print("邮件发送失败")
+        return 1
 
     # 时间窗口
     time_windows = {
@@ -176,7 +219,6 @@ def main() -> int:
     raw_items, statuses = collect_all(session, now)
 
     # 加载 OPML 源
-    output_dir = Path(args.output_dir)
     opml_path = Path(args.rss_opml)
 
     if opml_path.exists():
@@ -202,12 +244,12 @@ def main() -> int:
     print(f"时间过滤后: {len(filtered_items)} 条")
 
     # 去重
-    seen_urls = set()
+    seen_keys = set()
     unique_items = []
     for item in filtered_items:
-        url = item.get("url", "")
-        if url not in seen_urls:
-            seen_urls.add(url)
+        key = dedupe_key(item)
+        if key not in seen_keys:
+            seen_keys.add(key)
             unique_items.append(item)
 
     print(f"去重后: {len(unique_items)} 条")

@@ -1,13 +1,13 @@
 """邮件推送模块 - 支持发送 HTML 格式的日报邮件"""
 
 import os
-import random
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from datetime import datetime
 from typing import Any
+from urllib.parse import quote
 
 
 def get_email_config() -> dict[str, Any]:
@@ -48,9 +48,9 @@ SECTION_IMAGES = {
         "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=400&h=200&fit=crop",
         "https://images.unsplash.com/photo-1575540325296-424c27aedec4?w=400&h=200&fit=crop",
         "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=400&h=200&fit=crop",
-        "https://images.unsplash.com/photo-1569025743873-ea3a9ber647f?w=400&h=200&fit=crop",
-        "https://images.unsplash.com/photo-1555848962-6e79363ec58f?w=400&h=200&fit=crop",
         "https://images.unsplash.com/photo-1523292562811-8fa7962a78c8?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1555848962-6e79363ec58f?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1495020689067-958852a7765e?w=400&h=200&fit=crop",
     ],
     "财经": [
         "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=200&fit=crop",
@@ -89,7 +89,6 @@ SECTION_IMAGES = {
 
 def _fill_missing_images(section_name: str, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     pool = list(SECTION_IMAGES.get(section_name, SECTION_IMAGES["其他"]))
-    random.shuffle(pool)
     pool_idx = 0
     for item in items:
         if not item.get("image_url"):
@@ -100,6 +99,25 @@ def _fill_missing_images(section_name: str, items: list[dict[str, Any]]) -> list
 
 def _html_escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def _fallback_image_data_uri(style: dict[str, str], width: int, height: int) -> str:
+    label = _html_escape(style.get("label", "NEWS"))
+    color = style.get("color", "#525252")
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
+        f'<rect width="100%" height="100%" fill="#f4f4f4"/>'
+        f'<rect x="0" y="0" width="8" height="{height}" fill="{color}"/>'
+        f'<text x="24" y="{height // 2 - 8}" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#111111">Smart Daily</text>'
+        f'<text x="24" y="{height // 2 + 18}" font-family="Arial, sans-serif" font-size="13" fill="{color}">{label}</text>'
+        f'</svg>'
+    )
+    return "data:image/svg+xml;charset=utf-8," + quote(svg)
+
+
+def _image_error_attr(style: dict[str, str], width: int, height: int) -> str:
+    fallback = _fallback_image_data_uri(style, width, height)
+    return f'onerror="this.onerror=null;this.src=\'{fallback}\';"'
 
 
 def _render_source(source: str, style: dict[str, str]) -> str:
@@ -124,7 +142,8 @@ def _render_hero_item(item: dict[str, Any], style: dict[str, str]) -> str:
         f'<td width="260" valign="top" style="padding:0 18px 16px 0;">'
         f'<a href="{url}" style="text-decoration:none;">'
         f'<img src="{image_url}" width="260" height="156" alt="" '
-        f'style="display:block;width:260px;height:156px;object-fit:cover;border:0;">'
+        f'{_image_error_attr(style, 260, 156)} '
+        f'style="display:block;width:260px;height:156px;object-fit:cover;border:0;background-color:#f4f4f4;">'
         f'</a>'
         f'</td>'
         f'<td valign="top" style="padding:0 0 16px 0;">'
@@ -165,7 +184,8 @@ def _render_list_item(item: dict[str, Any], index: int, style: dict[str, str]) -
         f'<td valign="top" width="128" style="padding:14px 0;border-bottom:1px solid #eeeeee;">'
         f'<a href="{url}" style="text-decoration:none;">'
         f'<img src="{image_url}" width="128" height="78" alt="" '
-        f'style="display:block;width:128px;height:78px;object-fit:cover;border:0;">'
+        f'{_image_error_attr(style, 128, 78)} '
+        f'style="display:block;width:128px;height:78px;object-fit:cover;border:0;background-color:#f4f4f4;">'
         f'</a>'
         f'</td>'
         f'</tr>'

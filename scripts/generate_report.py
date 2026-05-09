@@ -237,6 +237,7 @@ def main() -> int:
             "published_at": raw.published_at.isoformat() if raw.published_at else None,
             "site_id": raw.site_id,
             "site_name": raw.site_name,
+            "image_url": raw.meta.get("image_url") if raw.meta else None,
         })
 
     # 按时间过滤
@@ -270,6 +271,7 @@ def main() -> int:
             "published_at": item.get("published_at"),
             "site_id": item.get("site_id", ""),
             "site_name": item.get("site_name", ""),
+            "image_url": item.get("image_url"),
         }
         items_with_id.append(item_with_id)
 
